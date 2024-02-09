@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Список Персонажей</title>
+</head>
+<body>
+<nav>
+    <a href="/">Главная</a> |
+    <a href="/characters/new">Создать нового персонажа</a>
+</nav>
+
+<h1>Персонажи</h1>
+<ul>
+    {{if len .}}
+    {{range $id, $character := .}}
+        <li>
+            <a href="/characters/{{$id}}">
+                Имя: {{$character.Name}}, Профессия: {{$character.Occupation}}, Возраст: {{$character.Age}}
+            </a>
+        </li>
+    {{end}}
+    {{else}}
+    <li>Персонажей нет</li>
+    {{end}}
+</ul>
+</body>
+</html>

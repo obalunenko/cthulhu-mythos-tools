@@ -1,0 +1,12 @@
+github.com/google/uuid v1.6.0 h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
+github.com/google/uuid v1.6.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
+github.com/obalunenko/getenv v1.12.1 h1:16dfwnXa5AhZuScaT4qAxUapwpRBxTAdKmsHwc/aDvQ=
+github.com/obalunenko/getenv v1.12.1/go.mod h1:GtEy59H7644JXfVjxDFo1jEUe1yJ4asSyPwN8D19Pvs=
+github.com/obalunenko/logger v1.0.1 h1:XERBQry7q7Kxr6lDeh9RLsUr7oZj+T5J845B4RPxORE=
+github.com/obalunenko/logger v1.0.1/go.mod h1:BLGJLvxm4ImsjuGVOjrx59VUsbsLR2f7IkVPFjLyBvg=
+github.com/obalunenko/version v1.1.0 h1:yVua7OHnK3+MJpendeMmAlfzVmq7R1h8MO3Ufz7HEec=
+github.com/obalunenko/version v1.1.0/go.mod h1:Or267aCQxNcAtgOeWA7yOe/RqJS4XDaMfcFwk3ohbOg=
+golang.org/x/exp v0.0.0-20230809150735-7b3493d9a819 h1:EDuYyU/MkFXllv9QF9819VlI9a4tzGuCbhG0ExK9o1U=
+golang.org/x/exp v0.0.0-20230809150735-7b3493d9a819/go.mod h1:FXUEEKJgO7OQYeo8N01OfiKP8RXMtf6e8aTskBGqWdc=
+golang.org/x/sync v0.6.0 h1:5BMeUDZ7vkXGfEr1x9B4bRcTH4lpkTkpdh0T/J+qjbQ=
+golang.org/x/sync v0.6.0/go.mod h1:Czt+wKu1gCyEFDUtn0jG5QVvpJ6rzVqr5aXyt9drQfk=
