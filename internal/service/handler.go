@@ -143,8 +143,6 @@ func characterCreateHandler() http.HandlerFunc {
 
 		charactersDB[details.ID] = details
 
-		w.WriteHeader(http.StatusCreated)
-
 		resp := fmt.Sprintf("Персонаж %s создан!", details.ID)
 
 		operationResponse(w, r, http.StatusCreated, resp)
