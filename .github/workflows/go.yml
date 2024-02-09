@@ -1,0 +1,98 @@
+name: Go [lint, test]
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'master'
+    paths:
+      - 'scripts/**'
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'Makefile'
+      - '!**.*md'
+      - '.github/workflows/**'
+  pull_request:
+    types: [ opened, synchronize, reopened ]
+    branches:
+      - '*'
+    paths:
+      - 'scripts/**'
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'Makefile'
+      - '!**.*md'
+      - '.github/workflows/**'
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        os: [ 'ubuntu-22.04' ]
+        go: [ '1.22' ]
+    runs-on: ${{ matrix.os }}
+    name: Build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up go
+        uses: actions/setup-go@v5.0.0
+        with:
+          go-version: ${{ matrix.go }}
+
+      - run: |
+          go version
+        shell: bash
+
+      - name: Build
+        run: |
+          make build
+        shell: bash
+
+      - name: Install GoReleaser
+        uses: goreleaser/goreleaser-action@v5
+        with:
+          install-only: true
+
+      - name: Check release config
+        run: |
+          make check-releaser
+        shell: bash
+
+  testing:
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        os: [ 'ubuntu-22.04' ]
+        go: [ '1.22' ]
+    runs-on: ${{ matrix.os }}
+    name: Run Tests
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up go
+        uses: actions/setup-go@v5.0.0
+        with:
+          go-version: ${{ matrix.go }}
+
+      - run: |
+          go version
+        shell: bash
+
+      - name: Test
+        run: |
+          make test
+        shell: bash
+
+
