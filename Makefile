@@ -40,6 +40,24 @@ help:
 build: sync-vendor generate compile-app
 .PHONY: build
 
+docker-build:
+	@echo "Building docker image..."
+	@docker build -t $(APP_NAME):latest -f Dockerfile .
+	@echo "Done"
+.PHONY: docker-build
+
+docker-run:
+	@echo "Running docker image..."
+	@docker compose -f compose.yaml up
+	@echo "Done"
+.PHONY: docker-run
+
+docker-stop:
+	@echo "Stopping docker image..."
+	@docker compose -f compose.yaml down
+	@echo "Done"
+.PHONY: docker-stop
+
 ## Compile app.
 compile-app:
 	$(COMPOSE_TOOLS_CMD_UP) build build
