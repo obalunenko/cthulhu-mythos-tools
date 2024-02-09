@@ -9,11 +9,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/obalunenko/logger"
 
-	"github.com/obalunenko/cthulhu-mythos-tools/internal/config"
 	"github.com/obalunenko/cthulhu-mythos-tools/internal/service/assets"
 )
 
-func NewRouter(cfg config.Config) *http.ServeMux {
+func NewRouter() http.Handler {
 	mux := http.NewServeMux()
 
 	mw := []func(http.Handler) http.Handler{
@@ -74,10 +73,12 @@ func NewRouter(cfg config.Config) *http.ServeMux {
 			"handler": handler.name,
 		}).Info("Добавлен обработчик")
 
-		mux.Handle(pattern, mwApply(handler))
+		mux.Handle(pattern, handler)
 	}
 
-	return mux
+	h := http.Handler(mux)
+
+	return mwApply(h)
 }
 
 func makePathPattern(method, path string) string {
@@ -123,9 +124,6 @@ func characterFormHandler() http.HandlerFunc {
 }
 
 func characterCreateHandler() http.HandlerFunc {
-	detailsHTML := string(assets.MustLoad("character_operation.gohtml"))
-	detailsTmpl := template.Must(template.New("character_operations").Parse(detailsHTML))
-
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Обработка данных формы
 		details := Character{
@@ -149,14 +147,7 @@ func characterCreateHandler() http.HandlerFunc {
 
 		resp := fmt.Sprintf("Персонаж %s создан!", details.ID)
 
-		err := detailsTmpl.Execute(w, struct {
-			Message string
-		}{
-			Message: resp,
-		})
-		if err != nil {
-			logger.WithError(r.Context(), err).Error("Ошибка при отправке ответа")
-		}
+		operationResponse(w, r, http.StatusCreated, resp)
 	}
 }
 
@@ -182,10 +173,22 @@ func characterDetailsHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 
-		id := r.URL.Query().Get("id")
+		id := r.PathValue("id")
+		if !isValidID(id) {
+			status := http.StatusBadRequest
+			resp := "Неверный формат идентификатора персонажа"
+
+			operationResponse(w, r, status, resp)
+
+			return
+		}
+
 		character, ok := charactersDB[id]
 		if !ok {
-			http.Error(w, "Персонаж не найден", http.StatusNotFound)
+			status := http.StatusNotFound
+			resp := "Персонаж не найден"
+
+			operationResponse(w, r, status, resp)
 
 			return
 		}
@@ -199,34 +202,59 @@ func characterDetailsHandler() http.HandlerFunc {
 }
 
 func characterDeleteHandler() http.HandlerFunc {
-	detailsHTML := string(assets.MustLoad("character_operation.gohtml"))
-	detailsTmpl := template.Must(template.New("character_operations").Parse(detailsHTML))
-
 	return func(w http.ResponseWriter, r *http.Request) {
 		var (
 			status int
 			resp   string
 		)
 
-		id := r.URL.Query().Get("id")
+		defer func() {
+			operationResponse(w, r, status, resp)
+		}()
+
+		id := r.PathValue("id")
+
+		if !isValidID(id) {
+			status = http.StatusBadRequest
+			resp = "Неверный формат идентификатора персонажа"
+
+			return
+		}
+
 		if _, ok := charactersDB[id]; !ok {
 			status = http.StatusNotFound
 			resp = "Персонаж не найден"
 		} else {
 			delete(charactersDB, id)
-			status = http.StatusNoContent
+			status = http.StatusOK
 			resp = fmt.Sprintf("Персонаж %s удален!", id)
 		}
+	}
+}
 
-		w.WriteHeader(status)
+func isValidID(id string) bool {
+	_, err := uuid.Parse(id)
+	if err != nil {
+		logger.WithError(context.Background(), err).
+			Error("Ошибка при проверке идентификатора персонажа")
 
-		err := detailsTmpl.Execute(w, struct {
-			Message string
-		}{
-			Message: resp,
-		})
-		if err != nil {
-			logger.WithError(r.Context(), err).Error("Ошибка при отправке ответа")
-		}
+		return false
+	}
+	return true
+}
+
+func operationResponse(w http.ResponseWriter, r *http.Request, status int, message string) {
+	detailsHTML := string(assets.MustLoad("character_operation.gohtml"))
+	detailsTmpl := template.Must(template.New("character_operations").Parse(detailsHTML))
+
+	w.WriteHeader(status)
+
+	err := detailsTmpl.Execute(w, struct {
+		Message string
+	}{
+		Message: message,
+	})
+	if err != nil {
+		logger.WithError(r.Context(), err).Error("Ошибка при отправке ответа")
 	}
 }

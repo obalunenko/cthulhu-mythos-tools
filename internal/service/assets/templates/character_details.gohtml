@@ -18,10 +18,25 @@
 <p><strong>Возраст:</strong> {{.Age}}</p>
 
 <!-- Форма для удаления персонажа -->
-<form action="/characters/{{.ID}}/delete" method="post">
+<form id="deleteCharacterForm">
     <input type="hidden" name="id" value="{{.ID}}">
     <button type="submit">Удалить персонажа</button>
 </form>
+
+<script>
+    document.getElementById('deleteCharacterForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        var id = this.querySelector('[name="id"]').value;
+
+        fetch('/characters/' + id, {
+            method: 'DELETE',
+        }).then(() => {
+            window.location.href = '/characters'; // Перенаправление на список персонажей после удаления
+        }).catch((error) => {
+            console.error('Ошибка:', error);
+        });
+    });
+</script>
 
 <a href="/characters/list">Вернуться к списку персонажей</a>
 </body>

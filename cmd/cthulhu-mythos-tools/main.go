@@ -38,7 +38,7 @@ func main() {
 
 	ctx = log.ContextWithLogger(ctx, l)
 
-	router := service.NewRouter(*cfg)
+	router := service.NewRouter()
 
 	server := &http.Server{
 		Addr:    net.JoinHostPort(cfg.HTTP.Host, cfg.HTTP.Port),
