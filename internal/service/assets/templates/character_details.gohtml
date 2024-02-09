@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Детали персонажа</title>
+</head>
+<body>
+<nav>
+    <a href="/">Главная</a> |
+    <a href="/characters/new">Создать нового персонажа</a> |
+    <a href="/characters/list">Просмотреть список персонажей</a>
+</nav>
+
+<h1>Детали персонажа</h1>
+
+<p><strong>Имя:</strong> {{.Name}}</p>
+<p><strong>Профессия:</strong> {{.Occupation}}</p>
+<p><strong>Возраст:</strong> {{.Age}}</p>
+
+<!-- Форма для удаления персонажа -->
+<form id="deleteCharacterForm">
+    <input type="hidden" name="id" value="{{.ID}}">
+    <button type="submit">Удалить персонажа</button>
+</form>
+
+<script>
+    document.getElementById('deleteCharacterForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        var id = this.querySelector('[name="id"]').value;
+
+        fetch('/characters/' + id, {
+            method: 'DELETE',
+        }).then(() => {
+            window.location.href = '/characters'; // Перенаправление на список персонажей после удаления
+        }).catch((error) => {
+            console.error('Ошибка:', error);
+        });
+    });
+</script>
+
+<a href="/characters/list">Вернуться к списку персонажей</a>
+</body>
+</html>
