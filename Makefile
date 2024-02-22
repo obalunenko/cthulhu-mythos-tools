@@ -166,11 +166,14 @@ bump-go-version:
 	./scripts/bump-go.sh $(GOVERSION)
 .PHONY: bump-go-version
 
-build-docker:
-	./scripts/build/docker.sh
-.PHONY: build-docker
+build-go-tools: install-tools
+.PHONY: build-go-tools
 
-run-local: build-docker
+build-cthulhu-mythos-tools:
+	./scripts/build/docker.sh
+.PHONY: build-cthulhu-mythos-tools
+
+run-local: build-cthulhu-mythos-tools
 	docker compose -f ./deployments/docker-compose/cthulhu-compose.yaml up --build --remove-orphans --detach
 .PHONY: run-local
 
