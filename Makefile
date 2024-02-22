@@ -16,6 +16,15 @@ COMPOSE_TOOLS_CMD_PULL=$(COMPOSE_TOOLS_CMD_BASE) build
 
 GOVERSION:=1.22
 
+CTHULHU_MYTHOS_TOOLS_IMAGE?=$(APP_NAME)
+SHELL := env CTHULHU_MYTHOS_TOOLS_IMAGE=$(CTHULHU_MYTHOS_TOOLS_IMAGE) $(SHELL)
+
+GOTOOLS_IMAGE?=go-tools-local
+SHELL := env GOTOOLS_IMAGE=$(GOTOOLS_IMAGE) $(SHELL)
+
+DOCKER_REPO?=
+SHELL := env DOCKER_REPO=$(DOCKER_REPO) $(SHELL)
+
 TARGET_MAX_CHAR_NUM=20
 
 ## Show help
@@ -40,27 +49,9 @@ help:
 build: sync-vendor generate compile-app
 .PHONY: build
 
-docker-build:
-	@echo "Building docker image..."
-	@docker build -t $(APP_NAME):latest -f Dockerfile .
-	@echo "Done"
-.PHONY: docker-build
-
-docker-run:
-	@echo "Running docker image..."
-	@docker compose -f compose.yaml up
-	@echo "Done"
-.PHONY: docker-run
-
-docker-stop:
-	@echo "Stopping docker image..."
-	@docker compose -f compose.yaml down
-	@echo "Done"
-.PHONY: docker-stop
-
 ## Compile app.
 compile-app:
-	$(COMPOSE_TOOLS_CMD_UP) build build
+	./scripts/build/app.sh
 .PHONY: compile-app
 
 ## Test coverage report.
@@ -119,7 +110,7 @@ format-project: fmt imports
 
 ## Installs vendored tools.
 install-tools:
-	$(COMPOSE_TOOLS_CMD_PULL)
+	./scripts/install/vendored-tools.sh
 .PHONY: install-tools
 
 ## vet project
@@ -174,6 +165,25 @@ new-version: vet test-regression build
 bump-go-version:
 	./scripts/bump-go.sh $(GOVERSION)
 .PHONY: bump-go-version
+
+build-go-tools: install-tools
+.PHONY: build-go-tools
+
+build-cthulhu-mythos-tools:
+	./scripts/build/docker.sh
+.PHONY: build-cthulhu-mythos-tools
+
+run-local: build-cthulhu-mythos-tools
+	docker compose -f ./deployments/docker-compose/cthulhu-compose.yaml up --build --remove-orphans --detach
+.PHONY: run-local
+
+stop-local:
+	docker compose -f ./deployments/docker-compose/cthulhu-compose.yaml down
+.PHONY: stop-local
+
+down-local:
+	docker compose -f ./deployments/docker-compose/cthulhu-compose.yaml down --volumes
+.PHONY: down-local
 
 .DEFAULT_GOAL := help
 

@@ -24,19 +24,6 @@ func loggerMiddleware(next http.Handler) http.Handler {
 
 func logRequestMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-
-		log.WithFields(ctx, log.Fields{
-			"method": r.Method,
-			"url":    r.URL.String(),
-		}).Info("Request received")
-
-		next.ServeHTTP(w, r)
-	})
-}
-
-func logResponseMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		now := time.Now()
 
 		ctx := r.Context()
@@ -45,12 +32,21 @@ func logResponseMiddleware(next http.Handler) http.Handler {
 
 		next.ServeHTTP(rw, r)
 
-		log.WithFields(ctx, log.Fields{
+		l := log.WithFields(ctx, log.Fields{
 			"method":  r.Method,
 			"url":     r.URL.String(),
 			"latency": time.Since(now).String(),
 			"status":  rw.status,
-		}).Info("Response sent")
+		})
+
+		switch rw.status {
+		case http.StatusInternalServerError:
+			l.Error("Request failed")
+		case http.StatusNotFound, http.StatusUnauthorized, http.StatusBadRequest, http.StatusForbidden:
+			l.Warn("Request processed")
+		default:
+			l.Info("Request processed")
+		}
 	})
 }
 

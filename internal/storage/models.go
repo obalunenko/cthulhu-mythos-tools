@@ -1,4 +1,4 @@
-package service
+package storage
 
 type Character struct {
 	ID         string

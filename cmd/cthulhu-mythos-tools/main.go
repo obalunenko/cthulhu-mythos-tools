@@ -26,7 +26,7 @@ func main() {
 
 	cfg, err := config.Load(ctx)
 	if err != nil {
-		log.WithError(ctx, err).Fatal("Ошибка при загрузке конфигурации")
+		log.WithError(ctx, err).Fatal("Failed to load config")
 	}
 
 	l := log.Init(ctx, log.Params{
@@ -37,6 +37,8 @@ func main() {
 	})
 
 	ctx = log.ContextWithLogger(ctx, l)
+
+	printVersion(ctx)
 
 	router := service.NewRouter()
 
@@ -52,8 +54,6 @@ func main() {
 
 		log.Info(ctx, "Server shutdown complete")
 	})
-
-	printVersion(ctx)
 
 	ctx, cancel := context.WithCancelCause(ctx)
 	defer func() {
@@ -99,16 +99,16 @@ func main() {
 	g.Go(func() error {
 		log.WithFields(ctx, log.Fields{
 			"address": server.Addr,
-		}).Info("Сервер запущен")
+		}).Info("Server started")
 
 		if err = server.ListenAndServe(); err != nil {
 			if !errors.Is(http.ErrServerClosed, err) {
-				log.WithError(ctx, err).Error("Ошибка при запуске сервера")
+				log.WithError(ctx, err).Error("Failed to start server")
 
 				return err
 			}
 
-			log.Info(ctx, "Сервер остановлен")
+			log.Info(ctx, "Server stopped gracefully")
 
 			return nil
 		}
@@ -117,6 +117,6 @@ func main() {
 	})
 
 	if err = g.Wait(); err != nil {
-		log.WithError(ctx, err).Fatal("Ошибка при работе сервера")
+		log.WithError(ctx, err).Fatal("Service failed")
 	}
 }

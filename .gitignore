@@ -22,3 +22,8 @@ dist/
 
 # Go workspace file
 go.work
+
+coverage/
+tests-report.json
+
+

@@ -1,7 +1,9 @@
 package service
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -9,7 +11,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/obalunenko/logger"
 
+	"github.com/obalunenko/cthulhu-mythos-tools/internal/character"
 	"github.com/obalunenko/cthulhu-mythos-tools/internal/service/assets"
+	"github.com/obalunenko/cthulhu-mythos-tools/internal/storage"
 )
 
 func NewRouter() http.Handler {
@@ -17,7 +21,6 @@ func NewRouter() http.Handler {
 
 	mw := []func(http.Handler) http.Handler{
 		logRequestMiddleware,
-		logResponseMiddleware,
 		requestIDMiddleware,
 		recoverMiddleware,
 		loggerMiddleware,
@@ -31,47 +34,22 @@ func NewRouter() http.Handler {
 		return h
 	}
 
-	type handlerWrap struct {
-		http.HandlerFunc
-		name string
-	}
-
-	routes := map[string]handlerWrap{
-		makePathPattern(http.MethodGet, "/"): {
-			HandlerFunc: indexHandler(),
-			name:        "indexHandler",
-		},
-		makePathPattern(http.MethodGet, "/favicon.ico"): {
-			HandlerFunc: faviconHandler(),
-			name:        "faviconHandler",
-		},
-		makePathPattern(http.MethodGet, "/characters/new"): {
-			HandlerFunc: characterFormHandler(),
-			name:        "characterFormHandler",
-		},
-		makePathPattern(http.MethodPost, "/characters"): {
-			HandlerFunc: characterCreateHandler(),
-			name:        "characterCreateHandler",
-		},
-		makePathPattern(http.MethodGet, "/characters"): {
-			HandlerFunc: listCharactersHandler(),
-			name:        "listCharactersHandler",
-		},
-		makePathPattern(http.MethodGet, "/characters/{id}"): {
-			HandlerFunc: characterDetailsHandler(),
-			name:        "characterDetailsHandler",
-		},
-		makePathPattern(http.MethodDelete, "/characters/{id}"): {
-			HandlerFunc: characterDeleteHandler(),
-			name:        "characterDeleteHandler",
-		},
+	routes := map[string]http.HandlerFunc{
+		makePathPattern(http.MethodGet, "/"):                   indexHandler(),
+		makePathPattern(http.MethodGet, "/favicon.ico"):        faviconHandler(),
+		makePathPattern(http.MethodGet, "/characters/new"):     characterFormHandler(),
+		makePathPattern(http.MethodGet, "/characters/import"):  characterImportFormHandler(),
+		makePathPattern(http.MethodPost, "/characters/import"): characterImportHandler(),
+		makePathPattern(http.MethodPost, "/characters"):        characterCreateHandler(),
+		makePathPattern(http.MethodGet, "/characters"):         listCharactersHandler(),
+		makePathPattern(http.MethodGet, "/characters/{id}"):    characterDetailsHandler(),
+		makePathPattern(http.MethodDelete, "/characters/{id}"): characterDeleteHandler(),
 	}
 
 	for pattern, handler := range routes {
 		logger.WithFields(context.Background(), logger.Fields{
-			"method":  pattern,
-			"handler": handler.name,
-		}).Info("Добавлен обработчик")
+			"endpoint": pattern,
+		}).Info("Route registered")
 
 		mux.Handle(pattern, handler)
 	}
@@ -93,7 +71,7 @@ func indexHandler() http.HandlerFunc {
 		w.Header().Set("Content-Type", "text/html")
 
 		if err := homePageTmpl.Execute(w, nil); err != nil {
-			http.Error(w, "failed to execute template", http.StatusInternalServerError)
+			operationResponse(w, r, http.StatusInternalServerError, "Failed to render index page")
 
 			return
 		}
@@ -106,7 +84,7 @@ func faviconHandler() http.HandlerFunc {
 	}
 }
 
-var charactersDB = make(map[string]Character)
+var charactersDB = storage.NewInMemoryStorage()
 
 func characterFormHandler() http.HandlerFunc {
 	formHTML := string(assets.MustLoad("character_create.gohtml"))
@@ -116,17 +94,94 @@ func characterFormHandler() http.HandlerFunc {
 		w.Header().Set("Content-Type", "text/html")
 
 		if err := formTmpl.Execute(w, nil); err != nil {
-			logger.WithError(r.Context(), err).Error("Ошибка при отображении формы")
+			logger.WithError(r.Context(), err).Error("Failed to render form")
 
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			operationResponse(w, r, http.StatusInternalServerError, "Failed to render form")
 		}
+	}
+}
+
+func characterImportFormHandler() http.HandlerFunc {
+	formHTML := string(assets.MustLoad("character_import.gohtml"))
+	formTmpl := template.Must(template.New("form").Parse(formHTML))
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+
+		if err := formTmpl.Execute(w, nil); err != nil {
+			logger.WithError(r.Context(), err).Error("Failed to render form")
+
+			operationResponse(w, r, http.StatusInternalServerError, "Failed to render form")
+		}
+	}
+}
+
+func characterImportHandler() http.HandlerFunc {
+	const maxFileSize = 10 << 20 // Максимальный размер файла 10MB
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseMultipartForm(maxFileSize); err != nil {
+			operationResponse(w, r, http.StatusBadRequest, "Failed to parse form")
+
+			return
+		}
+
+		file, _, err := r.FormFile("jsonFile")
+		if err != nil {
+			operationResponse(w, r, http.StatusBadRequest, "Failed to get file from form")
+
+			logger.WithError(r.Context(), err).Error("Failed to get file from form")
+
+			return
+
+		}
+
+		defer file.Close()
+
+		var buf bytes.Buffer
+
+		if _, err = buf.ReadFrom(file); err != nil {
+			operationResponse(w, r, http.StatusBadRequest, "Failed to read file from form")
+
+			logger.WithError(r.Context(), err).Error("Failed to read file from form")
+
+			return
+		}
+
+		investigator, err := character.UnmarshalInvestigator(buf.Bytes())
+		if err != nil {
+			operationResponse(w, r, http.StatusBadRequest, "Failed to unmarshal investigator from file")
+
+			logger.WithError(r.Context(), err).Error("Failed to unmarshal investigator from file")
+
+			return
+		}
+
+		ch := storage.Character{
+			ID:         uuid.New().String(),
+			Name:       investigator.Investigator.PersonalDetails.Name,
+			Occupation: investigator.Investigator.PersonalDetails.Occupation,
+			Age:        investigator.Investigator.PersonalDetails.Age,
+		}
+
+		if err = charactersDB.Create(ch); err != nil {
+			operationResponse(w, r, http.StatusInternalServerError, "Failed to save character to storage")
+
+			logger.WithError(r.Context(), err).Error("Failed to save character to storage")
+
+			return
+		}
+
+		resp := fmt.Sprintf("Character %s created!", ch.ID)
+
+		operationResponse(w, r, http.StatusCreated, resp)
 	}
 }
 
 func characterCreateHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Обработка данных формы
-		details := Character{
+		details := storage.Character{
 			ID:         uuid.New().String(),
 			Name:       r.FormValue("name"),
 			Occupation: r.FormValue("occupation"),
@@ -139,11 +194,17 @@ func characterCreateHandler() http.HandlerFunc {
 			"name":       details.Name,
 			"occupation": details.Occupation,
 			"age":        details.Age,
-		}).Info("Персонаж создан")
+		}).Info("Create character")
 
-		charactersDB[details.ID] = details
+		if err := charactersDB.Create(details); err != nil {
+			logger.WithError(r.Context(), err).Error("Failed to save character to storage")
 
-		resp := fmt.Sprintf("Персонаж %s создан!", details.ID)
+			operationResponse(w, r, http.StatusInternalServerError, "Failed to save character to storage")
+
+			return
+		}
+
+		resp := fmt.Sprintf("Character %s created!", details.ID)
 
 		operationResponse(w, r, http.StatusCreated, resp)
 	}
@@ -155,10 +216,21 @@ func listCharactersHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 
-		if err := listTmpl.Execute(w, charactersDB); err != nil {
-			logger.WithError(r.Context(), err).Error("Ошибка при отображении списка персонажей")
+		list, err := charactersDB.List()
+		if err != nil {
+			logger.WithError(r.Context(), err).Error("Failed to get characters list")
 
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			operationResponse(w, r, http.StatusInternalServerError, "Failed to get characters list")
+
+			return
+		}
+
+		if err = listTmpl.Execute(w, list); err != nil {
+			logger.WithError(r.Context(), err).Error("Failed to render characters list")
+
+			operationResponse(w, r, http.StatusInternalServerError, "Failed to render characters list")
+
+			return
 		}
 	}
 }
@@ -173,25 +245,35 @@ func characterDetailsHandler() http.HandlerFunc {
 		id := r.PathValue("id")
 		if !isValidID(id) {
 			status := http.StatusBadRequest
-			resp := "Неверный формат идентификатора персонажа"
+			resp := "Wrong character ID format"
 
 			operationResponse(w, r, status, resp)
 
 			return
 		}
 
-		character, ok := charactersDB[id]
-		if !ok {
-			status := http.StatusNotFound
-			resp := "Персонаж не найден"
+		ch, err := charactersDB.Get(id)
+		if err != nil {
+			var (
+				status int
+				resp   string
+			)
+
+			if errors.Is(err, storage.ErrNotFound) {
+				status = http.StatusNotFound
+				resp = "Character not found"
+			} else {
+				status = http.StatusInternalServerError
+				resp = "Failed to get character details"
+			}
 
 			operationResponse(w, r, status, resp)
 
 			return
 		}
 
-		if err := detailsTmpl.Execute(w, character); err != nil {
-			logger.WithError(r.Context(), err).Error("Ошибка при отображении деталей персонажа")
+		if err := detailsTmpl.Execute(w, ch); err != nil {
+			logger.WithError(r.Context(), err).Error("Failed to render character details")
 
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -213,19 +295,27 @@ func characterDeleteHandler() http.HandlerFunc {
 
 		if !isValidID(id) {
 			status = http.StatusBadRequest
-			resp = "Неверный формат идентификатора персонажа"
+			resp = "Wrong character ID format"
 
 			return
 		}
 
-		if _, ok := charactersDB[id]; !ok {
-			status = http.StatusNotFound
-			resp = "Персонаж не найден"
-		} else {
-			delete(charactersDB, id)
-			status = http.StatusOK
-			resp = fmt.Sprintf("Персонаж %s удален!", id)
+		if err := charactersDB.Delete(id); err != nil {
+			if errors.Is(err, storage.ErrNotFound) {
+				status = http.StatusNotFound
+				resp = "Character not found"
+
+				return
+			}
+
+			status = http.StatusInternalServerError
+			resp = "Failed to delete character"
+
+			return
 		}
+
+		status = http.StatusAccepted
+		resp = fmt.Sprintf("Character %s deleted!", id)
 	}
 }
 
@@ -233,7 +323,7 @@ func isValidID(id string) bool {
 	_, err := uuid.Parse(id)
 	if err != nil {
 		logger.WithError(context.Background(), err).
-			Error("Ошибка при проверке идентификатора персонажа")
+			Error("Failed to parse character ID")
 
 		return false
 	}
@@ -246,12 +336,21 @@ func operationResponse(w http.ResponseWriter, r *http.Request, status int, messa
 
 	w.WriteHeader(status)
 
+	if status != http.StatusOK && status != http.StatusCreated && status != http.StatusNoContent && status != http.StatusAccepted {
+		logger.WithFields(r.Context(), logger.Fields{
+			"status":  status,
+			"message": message,
+		}).Error("Character operation failed")
+
+		message = fmt.Sprintf("%s[%d]: %s", http.StatusText(status), status, message)
+	}
+
 	err := detailsTmpl.Execute(w, struct {
 		Message string
 	}{
 		Message: message,
 	})
 	if err != nil {
-		logger.WithError(r.Context(), err).Error("Ошибка при отправке ответа")
+		logger.WithError(r.Context(), err).Error("Failed to render character operation response")
 	}
 }

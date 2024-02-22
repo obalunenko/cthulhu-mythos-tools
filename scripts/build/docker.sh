@@ -10,11 +10,8 @@ source "${SCRIPTS_DIR}/helpers-source.sh"
 
 echo "${SCRIPT_NAME} is running... "
 
-export DOCKERFILE_PATH="${REPO_ROOT}/build/docker/go-tools/Dockerfile"
-
-export IMAGE_NAME="${GOTOOLS_IMAGE:-${DOCKER_REPO:-}go-tools:${VERSION}}"
-
-APP_NAME="go-tools"
+export DOCKERFILE_PATH="${REPO_ROOT}/build/docker/cthulhu-mythos-tools/Dockerfile"
+export IMAGE_NAME="${CTHULHU_MYTHOS_TOOLS_IMAGE:-${DOCKER_REPO}cthulhu-mythos-tools:${VERSION}}"
 
 echo "Building ${IMAGE_NAME} of ${APP_NAME} ..."
 
