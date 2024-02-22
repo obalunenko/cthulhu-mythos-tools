@@ -8,18 +8,19 @@
 <nav>
     <a href="/">Главная</a> |
     <a href="/characters/new">Создать нового персонажа</a>
+    <a href="/characters/import">Импортировать сыщика</a> <!-- Ссылка на страницу импорта -->
 </nav>
 
 <h1>Персонажи</h1>
 <ul>
     {{if len .}}
-    {{range $id, $character := .}}
-        <li>
-            <a href="/characters/{{$id}}">
-                Имя: {{$character.Name}}, Профессия: {{$character.Occupation}}, Возраст: {{$character.Age}}
-            </a>
-        </li>
-    {{end}}
+        {{range .}}
+            <li>
+                <a href="/characters/{{.ID}}">
+                    Имя: {{.Name}}, Профессия: {{.Occupation}}, Возраст: {{.Age}}
+                </a>
+            </li>
+        {{end}}
     {{else}}
     <li>Персонажей нет</li>
     {{end}}
