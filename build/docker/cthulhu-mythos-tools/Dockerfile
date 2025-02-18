@@ -1,7 +1,7 @@
-FROM --platform=$BUILDPLATFORM golang:1.22-alpine3.19 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.24.0-alpine3.21 AS builder
 
 LABEL maintainer="oleg.balunenko@gmail.com"
-LABEL org.opencontainers.image.source="https://github.com/obalunenko/scrum-report"
+LABEL org.opencontainers.image.source="https://github.com/obalunenko/cthulhu-mythos-tools"
 LABEL stage="base"
 
 
@@ -11,7 +11,7 @@ ARG APK_BASH_VERSION=~5
 ARG APK_GIT_VERSION=~2
 ARG APK_MAKE_VERSION=~4
 ARG APK_OPENSSH_VERSION=~9
-ARG APK_GCC_VERSION=~13
+ARG APK_GCC_VERSION=~14
 ARG APK_BUILDBASE_VERSION=~0
 ARG APK_BINUTILS_VERSION=~2
 
@@ -33,9 +33,9 @@ RUN mkdir -p /app && \
     cp ./bin/cthulhu-mythos-tools /app/
 
 
-FROM alpine:3.19 AS final
+FROM alpine:3.21 AS final
 
-ARG APK_CA_CERTIFICATES_VERSION=~20230506
+ARG APK_CA_CERTIFICATES_VERSION=~20241121
 
 # Install any runtime dependencies that are needed to run your application.
 # Leverage a cache mount to /var/cache/apk/ to speed up subsequent builds.
