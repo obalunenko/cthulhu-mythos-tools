@@ -40,9 +40,6 @@ builds:
     main: ./cmd/cthulhu-mythos-tools
     flags:
       - -trimpath
-    ldflags:
-      - "{{ .Env.GO_BUILD_LDFLAGS }}"
-      -
 universal_binaries:
   - # ID of the source build
     #
