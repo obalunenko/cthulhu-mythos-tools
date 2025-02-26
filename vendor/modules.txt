@@ -4,8 +4,8 @@ github.com/davecgh/go-spew/spew
 # github.com/google/uuid v1.6.0
 ## explicit
 github.com/google/uuid
-# github.com/obalunenko/getenv v1.14.0
-## explicit; go 1.23
+# github.com/obalunenko/getenv v1.14.1
+## explicit; go 1.24
 github.com/obalunenko/getenv
 github.com/obalunenko/getenv/internal
 github.com/obalunenko/getenv/option
@@ -23,8 +23,8 @@ github.com/pmezard/go-difflib/difflib
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/assert/yaml
 github.com/stretchr/testify/require
-# golang.org/x/exp v0.0.0-20240213143201-ec583247a57a
-## explicit; go 1.20
+# golang.org/x/exp v0.0.0-20250218142911-aa4b98e5adaa
+## explicit; go 1.23.0
 golang.org/x/exp/constraints
 # golang.org/x/sync v0.11.0
 ## explicit; go 1.18
