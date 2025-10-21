@@ -1,8 +1,6 @@
 module github.com/obalunenko/cthulhu-mythos-tools
 
-go 1.24
-
-toolchain go1.24.0
+go 1.24.0
 
 require (
 	github.com/google/uuid v1.6.0
@@ -10,7 +8,7 @@ require (
 	github.com/obalunenko/logger v1.2.0
 	github.com/obalunenko/version v1.3.1
 	github.com/stretchr/testify v1.11.1
-	golang.org/x/sync v0.16.0
+	golang.org/x/sync v0.17.0
 )
 
 require (
